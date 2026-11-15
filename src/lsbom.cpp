@@ -25,6 +25,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
 #include <map>
 
 // NOTE: Windows does not have several of these headers
@@ -336,35 +337,34 @@ int main(int argc, char *argv[]) {
               cout << filename;
             } else {
               // Print requested parameters
-              bool printed = true;
+              // Fields that do not apply to the entry print nothing and are not
+              // separated: the tab goes in front of a field that has output.
+              bool anyPrinted = false;
               for (unsigned j = 0; params[j]; j++) {
-                if (j && printed) {
-                  cout << '\t';
-                }
-                printed = true;
+                ostringstream field;
 
                 switch (params[j]) {
                 case 'f':
-                  cout << filename;
-                  continue;
+                  field << filename;
+                  goto fieldDone;
                 case 'F':
-                  cout << '"' << filename << '"';
-                  continue;
+                  field << '"' << filename << '"';
+                  goto fieldDone;
                 case 'g':
-                  cout << dec << ntohl(info2->group);
-                  continue;
+                  field << dec << ntohl(info2->group);
+                  goto fieldDone;
                 case 'G':
                   error("Group name not yet supported");
                   break;
                 case 'u':
-                  cout << dec << ntohl(info2->user);
-                  continue;
+                  field << dec << ntohl(info2->user);
+                  goto fieldDone;
                 case 'U':
                   error("User name not yet supported");
                   break;
                 case '/':
-                  cout << dec << ntohl(info2->user) << '/' << ntohl(info2->group);
-                  continue;
+                  field << dec << ntohl(info2->user) << '/' << ntohl(info2->group);
+                  goto fieldDone;
                 case '?':
                   error("User/group name not yet supported");
                   break;
@@ -373,8 +373,8 @@ int main(int argc, char *argv[]) {
                   if (!suppressDirSimModes || (info2->type != TYPE_DIR && info2->type != TYPE_LINK)) {
                     switch (params[j]) {
                     case 'm':
-                      cout << oct << ntohs(info2->mode);
-                      continue;
+                      field << oct << ntohs(info2->mode);
+                      goto fieldDone;
                     case 'M':
                       error("Symbolic mode not yet supported");
                       break;
@@ -384,22 +384,22 @@ int main(int argc, char *argv[]) {
                   if (info2->type == TYPE_FILE || info2->type == TYPE_LINK) {
                     switch (params[j]) {
                     case 't':
-                      cout << dec << ntohl(info2->modtime);
-                      continue;
+                      field << dec << ntohl(info2->modtime);
+                      goto fieldDone;
                     case 'T':
                       error("Formated mod time not yet supported");
                       break;
                     case 'c':
-                      cout << dec << ntohl(info2->checksum);
-                      continue;
+                      field << dec << ntohl(info2->checksum);
+                      goto fieldDone;
                     }
                   }
 
                   if (info2->type != TYPE_DIR && (!suppressDevSize || info2->type != TYPE_DEV)) {
                     switch (params[j]) {
                     case 's':
-                      cout << dec << ntohl(info2->size);
-                      continue;
+                      field << dec << ntohl(info2->size);
+                      goto fieldDone;
                     case 'S':
                       error("Formated size not yet supported");
                       break;
@@ -409,11 +409,11 @@ int main(int argc, char *argv[]) {
                   if (info2->type == TYPE_LINK) {
                     switch (params[j]) {
                     case 'l':
-                      cout << info2->linkName;
-                      continue;
+                      field << info2->linkName;
+                      goto fieldDone;
                     case 'L':
-                      cout << '"' << info2->linkName << '"';
-                      continue;
+                      field << '"' << info2->linkName << '"';
+                      goto fieldDone;
                     }
                   }
 
@@ -422,19 +422,26 @@ int main(int argc, char *argv[]) {
 
                     switch (params[j]) {
                     case '0':
-                      cout << dec << devType;
-                      continue;
+                      field << dec << devType;
+                      goto fieldDone;
                     case '1':
-                      cout << dec << (devType >> 24);
-                      continue;
+                      field << dec << (devType >> 24);
+                      goto fieldDone;
                     case '2':
-                      cout << dec << (devType & 0xff);
-                      continue;
+                      field << dec << (devType & 0xff);
+                      goto fieldDone;
                     }
                   }
                 }
 
-                printed = false;
+              fieldDone:
+                if (!field.str().empty()) {
+                  if (anyPrinted) {
+                    cout << '\t';
+                  }
+                  cout << field.str();
+                  anyPrinted = true;
+                }
               }
             }
             cout << '\n';
